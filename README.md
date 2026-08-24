@@ -11,9 +11,10 @@ a model actually learn.
 
 ## Status
 
-Data pipeline done: download, tokenization, batching. Model code (embeddings,
-attention, transformer block, training, sampling) is built incrementally,
-one concept per branch. Start at [INSTRUCTIONS.md](INSTRUCTIONS.md).
+Data pipeline done: download, tokenization, batching. Token/position
+embeddings done. Remaining model code (attention, transformer block,
+training, sampling) is built incrementally, one concept per branch. Start
+at [INSTRUCTIONS.md](INSTRUCTIONS.md).
 
 ## Setup
 
@@ -32,6 +33,8 @@ src/
     download.py   downloads the raw text corpus
     tokenizer.py   text <-> token ids
     batching.py    token ids -> (x, y) training batches
+  model/
+    embeddings.py  token ids -> (batch, block_size, n_embd) vectors
 data/
   raw/            downloaded data (gitignored)
 ```
@@ -81,3 +84,24 @@ training.
   i.e. `x[t+1]`. That's the entire supervision signal for training — `x`
   goes into the model, `y` is only used afterwards to score how wrong the
   model's prediction was (cross-entropy loss, added in `08-training-loop`).
+
+### `src/model/embeddings.py`
+
+Turns token ids into vectors the rest of the model can actually compute
+with. Ids are arbitrary labels — id 47 isn't "more" than id 18 — so a
+network can't do anything useful with them directly.
+
+`TokenAndPositionEmbedding` holds two learned lookup tables:
+
+- `token_emb`: a `(vocab_size, n_embd)` matrix — row `i` is the vector for
+  token id `i`. Starts random, gets shaped by training into something that
+  captures how tokens actually behave in the language.
+- `pos_emb`: a `(block_size, n_embd)` matrix — row `t` is the vector for
+  "being at position `t` in the window". Needed because self-attention
+  (next branch) has no built-in sense of order; it treats its input as a
+  set, not a sequence.
+
+`forward` looks both up and adds them, broadcasting `pos_emb` over the
+batch dimension: `(batch, block_size)` ids in, `(batch, block_size,
+n_embd)` vectors out — every position now carries both "what token is
+here" and "where in the window it is", ready for attention.
