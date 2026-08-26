@@ -29,8 +29,8 @@ concatenated back to n_embd and mixed by a final linear projection.
 """
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
 
 class Head(nn.Module):
@@ -92,7 +92,9 @@ def main() -> None:
         head.query.weight.copy_(identity)
         head.value.weight.copy_(identity)
 
-    x = torch.tensor([[1.0, 0.0], [0.0, 1.0], [1.0, 1.0], [0.0, 0.0]]).unsqueeze(0)  # (1, 4, 2)
+    x = torch.tensor([[1.0, 0.0], [0.0, 1.0], [1.0, 1.0], [0.0, 0.0]]).unsqueeze(
+        0
+    )  # (1, 4, 2)
     out = head(x)
 
     print(f"x shape: {tuple(x.shape)}")
