@@ -1,4 +1,4 @@
-"""One self-attention head: let each position gather context from earlier ones.
+"""Self-attention: let each position gather context from earlier ones.
 
 Token+position embeddings (previous branch) give each position a vector,
 but those vectors are computed independently — self-attention is what lets
@@ -19,6 +19,13 @@ it — so position t must never attend to positions > t, or it could "cheat"
 by looking at the answer it's supposed to predict. A lower-triangular mask
 (torch.tril) zeroes out (via -inf before softmax) every score for a future
 position.
+
+One head has a single Q/K/V projection, so it can only learn one kind of
+relationship between tokens at a time. MultiHeadAttention runs several
+smaller heads in parallel (each gets a head_size = n_embd // n_head slice),
+so different heads can specialize in different relationships (e.g. "the
+previous token" vs. "the matching opening bracket"). Their outputs are
+concatenated back to n_embd and mixed by a final linear projection.
 """
 
 import torch
@@ -48,6 +55,29 @@ class Head(nn.Module):
         wei = F.softmax(wei, dim=-1)
 
         return wei @ v  # (batch, T, head_size)
+
+
+class MultiHeadAttention(nn.Module):
+    """n_head causal heads run in parallel, then combined back into n_embd.
+
+    Each head only sees a head_size = n_embd // n_head slice of the
+    representation, so splitting into more heads doesn't add parameters —
+    it trades one head's capacity for several heads that can each learn a
+    different kind of token relationship at once.
+    """
+
+    def __init__(self, n_embd: int, n_head: int, block_size: int) -> None:
+        super().__init__()
+        assert n_embd % n_head == 0, "n_embd must be divisible by n_head"
+        head_size = n_embd // n_head
+        self.heads = nn.ModuleList(
+            [Head(n_embd, head_size, block_size) for _ in range(n_head)]
+        )
+        self.proj = nn.Linear(n_embd, n_embd)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        out = torch.cat([h(x) for h in self.heads], dim=-1)  # (batch, T, n_embd)
+        return self.proj(out)  # mix information across heads
 
 
 def main() -> None:
@@ -86,6 +116,17 @@ def main() -> None:
     ).unsqueeze(0)
     assert torch.allclose(out, expected, atol=1e-4)
     print("OK: output matches the hand-computed attention weights")
+
+    # Branch 05 check: output shape stays (batch, block_size, n_embd)
+    # regardless of how many heads n_embd is split across.
+    n_embd_mh, block_size_mh = 32, 8
+    batch_size = 4
+    x_mh = torch.randn(batch_size, block_size_mh, n_embd_mh)
+    for n_head in (1, 2, 4, 8):
+        mha = MultiHeadAttention(n_embd_mh, n_head, block_size_mh)
+        out_mh = mha(x_mh)
+        assert out_mh.shape == (batch_size, block_size_mh, n_embd_mh)
+    print("OK: MultiHeadAttention output shape is (batch, block_size, n_embd) for n_head in (1, 2, 4, 8)")
 
 
 if __name__ == "__main__":
