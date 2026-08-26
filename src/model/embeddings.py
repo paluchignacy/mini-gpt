@@ -14,7 +14,7 @@ encodes both "what token is here" and "where in the window it is".
 """
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 from src.data.batching import DEFAULT_INPUT_PATH, get_batch, train_val_split
 from src.data.tokenizer import CharTokenizer

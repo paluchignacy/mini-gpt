@@ -26,7 +26,9 @@ from src.data.tokenizer import CharTokenizer
 DEFAULT_INPUT_PATH = Path(__file__).resolve().parents[2] / "data" / "raw" / "input.txt"
 
 
-def train_val_split(data: torch.Tensor, train_frac: float = 0.9) -> tuple[torch.Tensor, torch.Tensor]:
+def train_val_split(
+    data: torch.Tensor, train_frac: float = 0.9
+) -> tuple[torch.Tensor, torch.Tensor]:
     split_idx = int(len(data) * train_frac)
     return data[:split_idx], data[split_idx:]
 
