@@ -128,7 +128,9 @@ def main() -> None:
         mha = MultiHeadAttention(n_embd_mh, n_head, block_size_mh)
         out_mh = mha(x_mh)
         assert out_mh.shape == (batch_size, block_size_mh, n_embd_mh)
-    print("OK: MultiHeadAttention output shape is (batch, block_size, n_embd) for n_head in (1, 2, 4, 8)")
+    print(
+        "OK: MultiHeadAttention output shape is (batch, block_size, n_embd) for n_head in (1, 2, 4, 8)"
+    )
 
 
 if __name__ == "__main__":
